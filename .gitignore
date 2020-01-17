@@ -4,7 +4,7 @@
 .idea/
 packages/
 
-# Exclude this file
+# Exclude this file (or don't... you do you, git!)
 .gitignore
 
 # Exclude files by extension
