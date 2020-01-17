@@ -12,6 +12,7 @@ packages/
 *.csproj
 *.DotSettings
 *.config
+*.bat
 
 # LogixEngine project files
 LogixEngine/*
