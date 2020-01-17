@@ -1,0 +1,24 @@
+﻿# Created by .ignore support plugin (hsz.mobi)
+
+# Exclude folders
+.idea/
+packages/
+
+# Exclude this file
+.gitignore
+
+# Exclude files by extension
+*.sln
+*.csproj
+*.DotSettings
+*.config
+
+# LogixEngine project files
+LogixEngine/*
+!LogixEngine/Changes.md
+!LogixEngine/Code/
+
+# Terrascape project files
+Terrascape/*
+!Terrascape/Changes.md
+!Terrascape/Code/
