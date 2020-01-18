@@ -239,6 +239,7 @@ namespace LogixEngine
 			{
 				Debug.LogDebug("Starting game");
 				Debug.LogEngineMessage("This game is using LogixEngine version " + LogixEngineVersion);
+				Debug.LogDebugRegisteredTypes();
 				window.Run(target_cps, target_fps);
 				Debug.LogDebug("Stopping game");
 			}
@@ -368,7 +369,7 @@ namespace LogixEngine
 			string title = title_format.Replace("%name%", name);
 
 			// Add game version
-			title = title.Replace("%version", version);
+			title = title.Replace("%version%", version);
 
 			// Add cycles per second
 			title = title.Replace("%cps%",
@@ -483,6 +484,21 @@ namespace LogixEngine
 			has_disposed = true;
 		}
 
+		#endregion
+		
+		#region Rerouted Functions
+
+		protected static void RegisterType(string type)
+		{
+			Debug.RegisterType(type);
+		}
+		
+		protected static void RegisterTypes(params string[] types)
+		{
+			foreach (string type in types)
+				Debug.RegisterType(type);
+		}
+		
 		#endregion
 	}
 }

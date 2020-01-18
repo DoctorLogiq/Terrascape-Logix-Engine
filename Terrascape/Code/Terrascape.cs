@@ -1,7 +1,8 @@
 ﻿using LogixEngine;
+using LogixEngine.Registry;
+using LogixEngine.Rendering.Texture;
 using LogixEngine.Utility;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Terrascape
@@ -19,11 +20,12 @@ namespace Terrascape
 		
 		public Terrascape(IEnumerable<string> args) : base("Terrascape", "1.0.0", 1280, 720, 30, 60, args)
 		{
+			RegisterTypes("Block", "Item", "Player", "Chunk");
 		}
 
 		protected override void PreWarm()
 		{
-			Debug.LogDebug($"Profiler resolution: {Debug.GetProfilerResolution()} ticks/sec, High res: {(Debug.IsProfilerHighResolution() ? "Yes" : "No")}");
+			Debug.LogDebug($"Profiler resolution: {Debug.GetProfilerResolution():n0} ticks/sec, High res: {(Debug.IsProfilerHighResolution() ? "Yes" : "No")}");
 		}
 
 		protected override void Load()
@@ -32,28 +34,29 @@ namespace Terrascape
 			{
 				Debug.Profile("Loading textures", true, new Task(() =>
 				{
-					Thread.Sleep(50); // TEMPORARY
+					// Load textures
+					TextureRegistry.Register(Texture.Load("loading_texture", ""));
 				}));
 
-				Debug.Profile("Loading shaders", true, new Task(() =>
-				{
-					Thread.Sleep(10); // TEMPORARY
-				}));
-			
-				Debug.Profile("Loading models", true, new Task(() =>
-				{
-					Thread.Sleep(1); // TEMPORARY
-				}));
-			
-				Debug.Profile("Loading sounds", true, new Task(() =>
+				/*Debug.Profile("Loading shaders", true, new Task(() =>
 				{
 					
-				}));
+				}));*/
 			
-				Debug.Profile("Loading music", true, new Task(() =>
+				/*Debug.Profile("Loading models", true, new Task(() =>
 				{
 					
-				}));
+				}));*/
+			
+				/*Debug.Profile("Loading sounds", true, new Task(() =>
+				{
+					
+				}));*/
+			
+				/*Debug.Profile("Loading music", true, new Task(() =>
+				{
+					
+				}));*/
 			}));
 		}
 

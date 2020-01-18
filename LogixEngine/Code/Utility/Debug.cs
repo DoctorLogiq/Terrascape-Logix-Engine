@@ -130,12 +130,16 @@ namespace LogixEngine.Utility
 		private static readonly Color SyntaxColourNumber     = Color.DodgerBlue;
 		private static readonly Color SyntaxColourIdentifier = Color.Coral;
 		private static readonly Color SyntaxColourString     = Color.Yellow;
-		private static readonly Color SyntaxColourBool       = Color.RoyalBlue;
+		private static readonly Color SyntaxColourBoolTrue   = Color.LimeGreen;
+		private static readonly Color SyntaxColourBoolFalse  = Color.OrangeRed;
+		private static readonly Color SyntaxColourType       = Color.DeepPink;
 
-		private const string RegexNumber     = @"[-+]?[0-9]\d*(\.|:\d+)?";
+		private const string RegexNumber     = @"[-+.]?\d+([\.:,]\d+)*";
 		private const string RegexIdentifier = @"'[A-z0-9_]+'";
 		private const string RegexString     = "\".+\"";
-		private const string RegexBool       = @"\b(yes|Yes|YES|no|No|NO|true|True|TRUE|false|False|FALSE)\b";
+		private const string RegexBoolTrue   = @"\b(yes|Yes|YES|true|True|TRUE)\b";
+		private const string RegexBoolFalse  = @"\b(no|No|NO|false|False|FALSE)\b";
+		private static string regex_type = @"\b(Texture|Shader|Model)\b";
 
 		private static readonly StyleSheet SyntaxStyleSheetInfo     = new StyleSheet(ColourInfo);
 		private static readonly StyleSheet SyntaxStyleSheetDebug    = new StyleSheet(ColourDebug);
@@ -143,32 +147,82 @@ namespace LogixEngine.Utility
 		private static readonly StyleSheet SyntaxStyleSheetError    = new StyleSheet(ColourError);
 		private static readonly StyleSheet SyntaxStyleSheetCritical = new StyleSheet(ColourCritical);
 
+		private static List<string> registered_types = new List<string>();
+		
+		internal static void RegisterType(string type)
+		{
+			regex_type = regex_type.Replace(@")\b", "") + $@"|{type})\b";
+
+			// NOTE(LOGIQ): The number here MUST equal the number (in chronilogical order) that this regex was added to the StyleSheets in the static constructor!
+			SyntaxStyleSheetInfo.Styles[5].Target = new TextPattern(regex_type);
+			SyntaxStyleSheetDebug.Styles[5].Target = new TextPattern(regex_type);
+			SyntaxStyleSheetWarning.Styles[5].Target = new TextPattern(regex_type);
+			SyntaxStyleSheetError.Styles[5].Target = new TextPattern(regex_type);
+			SyntaxStyleSheetCritical.Styles[5].Target = new TextPattern(regex_type);
+
+			registered_types.Add(type);
+		}
+
+		internal static void LogDebugRegisteredTypes()
+		{
+			int i = 0;
+			string type_list = "";
+			foreach (string type in registered_types)
+			{
+				if (i < 10)
+				{
+					type_list += (type_list.Length > 0 ? ", " : "") + type;
+					i++;
+				}
+				else
+				{
+					LogDebug("Registered types: " + type_list);
+					i = 0;
+					type_list = "";
+				}
+			}
+			if (type_list.Length > 0)
+				LogDebug("Registered types: " + type_list);
+			
+			registered_types.Clear();
+		}
+		
 		static Debug()
 		{
 			SyntaxStyleSheetInfo.AddStyle(RegexNumber,     SyntaxColourNumber);
 			SyntaxStyleSheetInfo.AddStyle(RegexIdentifier, SyntaxColourIdentifier);
 			SyntaxStyleSheetInfo.AddStyle(RegexString,     SyntaxColourString);
-			SyntaxStyleSheetInfo.AddStyle(RegexBool,       SyntaxColourBool);
+			SyntaxStyleSheetInfo.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
+			SyntaxStyleSheetInfo.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
+			SyntaxStyleSheetInfo.AddStyle(regex_type,       SyntaxColourType);
 
 			SyntaxStyleSheetDebug.AddStyle(RegexNumber,     SyntaxColourNumber);
 			SyntaxStyleSheetDebug.AddStyle(RegexIdentifier, SyntaxColourIdentifier);
 			SyntaxStyleSheetDebug.AddStyle(RegexString,     SyntaxColourString);
-			SyntaxStyleSheetDebug.AddStyle(RegexBool,       SyntaxColourBool);
+			SyntaxStyleSheetDebug.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
+			SyntaxStyleSheetDebug.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
+			SyntaxStyleSheetDebug.AddStyle(regex_type,       SyntaxColourType);
 
 			SyntaxStyleSheetWarning.AddStyle(RegexNumber,     SyntaxColourNumber);
 			SyntaxStyleSheetWarning.AddStyle(RegexIdentifier, SyntaxColourIdentifier);
 			SyntaxStyleSheetWarning.AddStyle(RegexString,     SyntaxColourString);
-			SyntaxStyleSheetWarning.AddStyle(RegexBool,       SyntaxColourBool);
+			SyntaxStyleSheetWarning.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
+			SyntaxStyleSheetWarning.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
+			SyntaxStyleSheetWarning.AddStyle(regex_type,       SyntaxColourType);
 
 			SyntaxStyleSheetError.AddStyle(RegexNumber,     SyntaxColourNumber);
 			SyntaxStyleSheetError.AddStyle(RegexIdentifier, SyntaxColourIdentifier);
 			SyntaxStyleSheetError.AddStyle(RegexString,     SyntaxColourString);
-			SyntaxStyleSheetError.AddStyle(RegexBool,       SyntaxColourBool);
+			SyntaxStyleSheetError.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
+			SyntaxStyleSheetError.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
+			SyntaxStyleSheetError.AddStyle(regex_type,       SyntaxColourType);
 
 			SyntaxStyleSheetCritical.AddStyle(RegexNumber,     SyntaxColourNumber);
 			SyntaxStyleSheetCritical.AddStyle(RegexIdentifier, SyntaxColourIdentifier);
 			SyntaxStyleSheetCritical.AddStyle(RegexString,     SyntaxColourString);
-			SyntaxStyleSheetCritical.AddStyle(RegexBool,       SyntaxColourBool);
+			SyntaxStyleSheetCritical.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
+			SyntaxStyleSheetCritical.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
+			SyntaxStyleSheetCritical.AddStyle(regex_type,       SyntaxColourType);
 		}
 
 		#endregion
