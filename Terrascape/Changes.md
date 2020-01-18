@@ -4,3 +4,4 @@ In other words, if you are not Logiq, ignore this.
 
 ### Initial tasks completed:
 
+- Tested the Debug.Profile(...) system

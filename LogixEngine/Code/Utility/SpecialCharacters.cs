@@ -1,4 +1,4 @@
-﻿namespace LogixEngine
+﻿namespace LogixEngine.Utility
 {
 	/* ---------------------------------------------------------------------------- *
      * SpecialCharacters.cs created by DrLogiq on 16-01-2020 12:30.
@@ -23,6 +23,7 @@
 		public const char Multiply = '×';
 		public const char Divide = '÷';
 		public const char GiveOrTake = '±';
+		public const char Superscript1 = '¹';
 		public const char Squared = '²';
 		public const char Cubed = '³';
 		public const char Half = '½';

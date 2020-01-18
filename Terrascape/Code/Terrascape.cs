@@ -1,4 +1,8 @@
 ﻿using LogixEngine;
+using LogixEngine.Utility;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Terrascape
 {
@@ -10,20 +14,47 @@ namespace Terrascape
 	{
 		public static void Main(string[] args)
 		{
-			using Terrascape terrascape = new Terrascape();
-			terrascape.Run(args);
+			new Terrascape(args).Run();
 		}
 		
-		public Terrascape() : base("Terrascape", 1280, 720, 30, 60)
+		public Terrascape(IEnumerable<string> args) : base("Terrascape", "1.0.0", 1280, 720, 30, 60, args)
 		{
 		}
 
 		protected override void PreWarm()
 		{
+			Debug.LogDebug($"Profiler resolution: {Debug.GetProfilerResolution()} ticks/sec, High res: {(Debug.IsProfilerHighResolution() ? "Yes" : "No")}");
 		}
 
 		protected override void Load()
 		{
+			Debug.Profile("Loading assets", true, new Task(() =>
+			{
+				Debug.Profile("Loading textures", true, new Task(() =>
+				{
+					Thread.Sleep(50); // TEMPORARY
+				}));
+
+				Debug.Profile("Loading shaders", true, new Task(() =>
+				{
+					Thread.Sleep(10); // TEMPORARY
+				}));
+			
+				Debug.Profile("Loading models", true, new Task(() =>
+				{
+					Thread.Sleep(1); // TEMPORARY
+				}));
+			
+				Debug.Profile("Loading sounds", true, new Task(() =>
+				{
+					
+				}));
+			
+				Debug.Profile("Loading music", true, new Task(() =>
+				{
+					
+				}));
+			}));
 		}
 
 		protected override void Cycle(double delta)
