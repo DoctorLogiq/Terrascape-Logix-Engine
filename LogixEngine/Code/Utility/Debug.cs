@@ -134,12 +134,12 @@ namespace LogixEngine.Utility
 		private static readonly Color SyntaxColourBoolFalse  = Color.OrangeRed;
 		private static readonly Color SyntaxColourType       = Color.DeepPink;
 
-		private const string RegexNumber     = @"[-+.]?\d+([\.:,]\d+)*";
-		private const string RegexIdentifier = @"'[A-z0-9_]+'";
-		private const string RegexString     = "\".+\"";
-		private const string RegexBoolTrue   = @"\b(yes|Yes|YES|true|True|TRUE)\b";
-		private const string RegexBoolFalse  = @"\b(no|No|NO|false|False|FALSE)\b";
-		private static string regex_type = @"\b(Texture|Shader|Model)\b";
+		private const  string RegexNumber     = @"[-+.]?\d+([\.:,]\d+)*";
+		private const  string RegexIdentifier = @"'[A-z0-9_]+'";
+		private const  string RegexString     = "\"(?:[^\"\\\\]|\\.)*\"";
+		private const  string RegexBoolTrue   = @"\b(yes|Yes|YES|true|True|TRUE)\b";
+		private const  string RegexBoolFalse  = @"\b(no|No|NO|false|False|FALSE)\b";
+		private static string regex_type      = @"\b([A-z]*(Exception)|Texture|Shader|Model)\b";
 
 		private static readonly StyleSheet SyntaxStyleSheetInfo     = new StyleSheet(ColourInfo);
 		private static readonly StyleSheet SyntaxStyleSheetDebug    = new StyleSheet(ColourDebug);
@@ -148,16 +148,19 @@ namespace LogixEngine.Utility
 		private static readonly StyleSheet SyntaxStyleSheetCritical = new StyleSheet(ColourCritical);
 
 		private static List<string> registered_types = new List<string>();
-		
+
 		internal static void RegisterType(string type)
 		{
+			if (Game.IsRunning)
+				throw new ApplicationException("Types should be registered in the game's constructor'");
+			
 			regex_type = regex_type.Replace(@")\b", "") + $@"|{type})\b";
 
 			// NOTE(LOGIQ): The number here MUST equal the number (in chronilogical order) that this regex was added to the StyleSheets in the static constructor!
-			SyntaxStyleSheetInfo.Styles[5].Target = new TextPattern(regex_type);
-			SyntaxStyleSheetDebug.Styles[5].Target = new TextPattern(regex_type);
-			SyntaxStyleSheetWarning.Styles[5].Target = new TextPattern(regex_type);
-			SyntaxStyleSheetError.Styles[5].Target = new TextPattern(regex_type);
+			SyntaxStyleSheetInfo.Styles[5].Target     = new TextPattern(regex_type);
+			SyntaxStyleSheetDebug.Styles[5].Target    = new TextPattern(regex_type);
+			SyntaxStyleSheetWarning.Styles[5].Target  = new TextPattern(regex_type);
+			SyntaxStyleSheetError.Styles[5].Target    = new TextPattern(regex_type);
 			SyntaxStyleSheetCritical.Styles[5].Target = new TextPattern(regex_type);
 
 			registered_types.Add(type);
@@ -165,7 +168,7 @@ namespace LogixEngine.Utility
 
 		internal static void LogDebugRegisteredTypes()
 		{
-			int i = 0;
+			int    i         = 0;
 			string type_list = "";
 			foreach (string type in registered_types)
 			{
@@ -177,16 +180,17 @@ namespace LogixEngine.Utility
 				else
 				{
 					LogDebug("Registered types: " + type_list);
-					i = 0;
+					i         = 0;
 					type_list = "";
 				}
 			}
+
 			if (type_list.Length > 0)
 				LogDebug("Registered types: " + type_list);
-			
+
 			registered_types.Clear();
 		}
-		
+
 		static Debug()
 		{
 			SyntaxStyleSheetInfo.AddStyle(RegexNumber,     SyntaxColourNumber);
@@ -194,35 +198,35 @@ namespace LogixEngine.Utility
 			SyntaxStyleSheetInfo.AddStyle(RegexString,     SyntaxColourString);
 			SyntaxStyleSheetInfo.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
 			SyntaxStyleSheetInfo.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
-			SyntaxStyleSheetInfo.AddStyle(regex_type,       SyntaxColourType);
+			SyntaxStyleSheetInfo.AddStyle(regex_type,      SyntaxColourType);
 
 			SyntaxStyleSheetDebug.AddStyle(RegexNumber,     SyntaxColourNumber);
 			SyntaxStyleSheetDebug.AddStyle(RegexIdentifier, SyntaxColourIdentifier);
 			SyntaxStyleSheetDebug.AddStyle(RegexString,     SyntaxColourString);
 			SyntaxStyleSheetDebug.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
 			SyntaxStyleSheetDebug.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
-			SyntaxStyleSheetDebug.AddStyle(regex_type,       SyntaxColourType);
+			SyntaxStyleSheetDebug.AddStyle(regex_type,      SyntaxColourType);
 
 			SyntaxStyleSheetWarning.AddStyle(RegexNumber,     SyntaxColourNumber);
 			SyntaxStyleSheetWarning.AddStyle(RegexIdentifier, SyntaxColourIdentifier);
 			SyntaxStyleSheetWarning.AddStyle(RegexString,     SyntaxColourString);
 			SyntaxStyleSheetWarning.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
 			SyntaxStyleSheetWarning.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
-			SyntaxStyleSheetWarning.AddStyle(regex_type,       SyntaxColourType);
+			SyntaxStyleSheetWarning.AddStyle(regex_type,      SyntaxColourType);
 
 			SyntaxStyleSheetError.AddStyle(RegexNumber,     SyntaxColourNumber);
 			SyntaxStyleSheetError.AddStyle(RegexIdentifier, SyntaxColourIdentifier);
 			SyntaxStyleSheetError.AddStyle(RegexString,     SyntaxColourString);
 			SyntaxStyleSheetError.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
 			SyntaxStyleSheetError.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
-			SyntaxStyleSheetError.AddStyle(regex_type,       SyntaxColourType);
+			SyntaxStyleSheetError.AddStyle(regex_type,      SyntaxColourType);
 
 			SyntaxStyleSheetCritical.AddStyle(RegexNumber,     SyntaxColourNumber);
 			SyntaxStyleSheetCritical.AddStyle(RegexIdentifier, SyntaxColourIdentifier);
 			SyntaxStyleSheetCritical.AddStyle(RegexString,     SyntaxColourString);
 			SyntaxStyleSheetCritical.AddStyle(RegexBoolTrue,   SyntaxColourBoolTrue);
 			SyntaxStyleSheetCritical.AddStyle(RegexBoolFalse,  SyntaxColourBoolFalse);
-			SyntaxStyleSheetCritical.AddStyle(regex_type,       SyntaxColourType);
+			SyntaxStyleSheetCritical.AddStyle(regex_type,      SyntaxColourType);
 		}
 
 		#endregion
@@ -239,12 +243,15 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		public static void LogInfo(string message)
 		{
-			if (DebugMode)
+			if (!Game.IsRunning)
 			{
-				Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
-				Console.Write(TagInfo,                       ColourTag);
-				Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetInfo);
+				Game.HasCrashed = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
+			
+			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
+			Console.Write(TagInfo,                       ColourTag);
+			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetInfo);
 
 			Log.Add($"{line:0000} {Timestamp} {TagInfo} {indentation_string}{message}");
 		}
@@ -262,6 +269,12 @@ namespace LogixEngine.Utility
 		{
 			if (!DebugMode)
 				return;
+			
+			if (!Game.IsRunning)
+			{
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
+			}
 
 			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
 			Console.Write(TagDebug,                      ColourTag);
@@ -280,12 +293,15 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		public static void LogWarning(string message)
 		{
-			if (DebugMode)
+			if (!Game.IsRunning)
 			{
-				Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
-				Console.Write(TagWarning,                    ColourTag);
-				Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetWarning);
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
+			
+			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
+			Console.Write(TagWarning,                    ColourTag);
+			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetWarning);
 
 			Log.Add($"{line:0000} {Timestamp} {TagWarning} {indentation_string}{message}");
 		}
@@ -300,12 +316,15 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		public static void LogError(string message)
 		{
-			if (DebugMode)
+			if (!Game.IsRunning)
 			{
-				Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
-				Console.Write(TagError,                      ColourTag);
-				Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetError);
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
+			
+			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
+			Console.Write(TagError,                      ColourTag);
+			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetError);
 
 			Log.Add($"{line:0000} {Timestamp} {TagError} {indentation_string}{message}");
 		}
@@ -320,12 +339,15 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		public static void LogCritical(string message)
 		{
-			if (DebugMode)
+			if (!Game.IsRunning)
 			{
-				Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
-				Console.Write(TagCritical,                   ColourTag);
-				Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetCritical);
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
+			
+			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
+			Console.Write(TagCritical,                   ColourTag);
+			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetCritical);
 
 			Log.Add($"{line:0000} {Timestamp} {TagCritical} {indentation_string}{message}");
 		}
@@ -341,11 +363,14 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		public static void LogInfoContinued(string message)
 		{
-			if (DebugMode)
+			if (!Game.IsRunning)
 			{
-				Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
-				Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetInfo);
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
+			
+			Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
+			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetInfo);
 
 			Log.Add($"{line:0000} {TimestampPlaceholder} {TagPlaceholder} {indentation_string}{message}");
 		}
@@ -363,6 +388,12 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		public static void LogDebugContinued(string message)
 		{
+			if (!Game.IsRunning)
+			{
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
+			}
+			
 			if (!DebugMode)
 				return;
 
@@ -383,11 +414,14 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		public static void LogWarningContinued(string message)
 		{
-			if (DebugMode)
+			if (!Game.IsRunning)
 			{
-				Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
-				Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetWarning);
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
+			
+			Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
+			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetWarning);
 
 			Log.Add($"{line:0000} {TimestampPlaceholder} {TagPlaceholder} {indentation_string}{message}");
 		}
@@ -403,11 +437,14 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		public static void LogErrorContinued(string message)
 		{
-			if (DebugMode)
+			if (!Game.IsRunning)
 			{
-				Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
-				Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetError);
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
+			
+			Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
+			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetError);
 
 			Log.Add($"{line:0000} {TimestampPlaceholder} {TagPlaceholder} {indentation_string}{message}");
 		}
@@ -423,11 +460,14 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		public static void LogCriticalContinued(string message)
 		{
-			if (DebugMode)
+			if (!Game.IsRunning)
 			{
-				Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
-				Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetCritical);
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
+
+			Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
+			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetCritical);
 
 			Log.Add($"{line:0000} {TimestampPlaceholder} {TagPlaceholder} {indentation_string}{message}");
 		}
@@ -441,12 +481,9 @@ namespace LogixEngine.Utility
 		/// <param name="message">The message to write</param>
 		internal static void LogEngineMessage(string message)
 		{
-			if (DebugMode)
-			{
-				Console.Write($"{++line:0000} {Timestamp} ",      ColourTimestamp);
-				Console.Write(TagEngine,                          ColourTag);
-				Console.Write($"{indentation_string}{message}\n", ColourEngine);
-			}
+			Console.Write($"{++line:0000} {Timestamp} ",      ColourTimestamp);
+			Console.Write(TagEngine,                          ColourTag);
+			Console.Write($"{indentation_string}{message}\n", ColourEngine);
 
 			Log.Add($"{line:0000} {Timestamp} {TagEngine} {indentation_string}{message}");
 		}
@@ -535,6 +572,10 @@ namespace LogixEngine.Utility
 				stopwatch.Start();
 
 				task.RunSynchronously();
+
+				// NOTE: If a task throws an exception it won't be caught, so we have to check that the task didn't throw one, and if it did, we need to re-throw it
+				if (task.IsFaulted && task.Exception?.InnerException != null)
+					throw task.Exception.InnerException;
 
 				stopwatch.Stop();
 				if (log_debug_task)

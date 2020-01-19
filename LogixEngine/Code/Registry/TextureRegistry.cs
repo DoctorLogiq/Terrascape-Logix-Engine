@@ -13,6 +13,11 @@ namespace LogixEngine.Registry
 		private TextureRegistry()
 		{
 		}
+		
+		public static void CheckIn()
+		{
+			// NOTE(LOGIQ): Leave empty
+		}
 
 		public new static Texture Register(Texture texture)
 		{

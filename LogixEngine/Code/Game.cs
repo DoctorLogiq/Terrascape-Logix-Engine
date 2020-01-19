@@ -2,6 +2,7 @@
 
 // System
 using LogixEngine._Extensions;
+using LogixEngine.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -14,6 +15,7 @@ using OpenTK;
 using OpenTK.Graphics;
 // LogixEngine
 using LogixEngine.Utility;
+using System.Threading.Tasks;
 
 #endregion
 
@@ -27,7 +29,7 @@ namespace LogixEngine
 	public abstract class Game : IDisposable
 	{
 		public const string LogixEngineVersion = "1.0.0";
-		
+
 		private readonly string     name;
 		private readonly string     version; // TODO(LOGIQ): Make a version class to use here
 		private readonly int        target_cps;
@@ -37,8 +39,16 @@ namespace LogixEngine
 		private readonly GameWindow window;
 		private          string     title_format;
 		public static    double     Width,       Height, HalfWidth, HalfHeight;
-		private          bool       has_crashed, has_disposed;
+		internal static bool IsRunning, HasCrashed, HasDisposed, HasConsole;
+		internal static ApplicationException ConstructorException;
 		private          bool       cf_per_second_override;
+		
+		#region Events
+
+		public delegate void LoadCompleteHandler();
+		public event LoadCompleteHandler LoadComplete;
+		
+		#endregion
 
 		protected int TargetFPS
 		{
@@ -127,6 +137,8 @@ namespace LogixEngine
 			int                 gl_minor               = 4,
 			bool                update_title_in_render = true)
 		{
+			ShowWindow(GetConsoleWindow(), SW_HIDE);
+			
 			// Set variables
 			this.name                   = name;
 			this.version                = version;
@@ -152,8 +164,12 @@ namespace LogixEngine
 			// Set the window event handlers
 			window.Load += (sender, args) =>
 			{
+				Debug.LogEngineMessage("Invoking game pre-warm");
 				PreWarm();
+				Debug.LogEngineMessage("Invoking game load");
 				Load();
+				Debug.LogEngineMessage("Game load finished");
+				LoadComplete?.Invoke();
 			};
 
 			window.UpdateFrame += (sender, args) => DoCycle(args.Time);
@@ -169,13 +185,13 @@ namespace LogixEngine
 				cf_per_second_override = true;
 				UpdateTitle();
 				cf_per_second_override = false;
-				
+
 				if (render_while_resizing)
 				{
 					DoRender(0.0D);
 				}
 			};
-			
+
 			// Process program arguments
 			foreach (string argument in arguments)
 			{
@@ -186,14 +202,22 @@ namespace LogixEngine
 						break;
 					case "-debug":
 					{
+						ShowWindow(GetConsoleWindow(), SW_SHOW);
+						HasConsole = true;
 						Debug.DebugMode = true;
 					}
-					break;
-					case "-drwr": // NOTE(LOGIQ): Don't render while resizing
+						break;
+					case "-console":
+					{
+						ShowWindow(GetConsoleWindow(), SW_SHOW);
+						HasConsole = true;
+					}
+						break;
+					case "-drwr": // NOTE: Don't render while resizing
 					{
 						render_while_resizing = false;
 					}
-					break;
+						break;
 				}
 			} // end of: foreach (string argument in arguments)...
 		}
@@ -202,41 +226,30 @@ namespace LogixEngine
 		{
 			// Store the console's original title so that if the game was called from an existing console, the
 			//  title can be reverted back to what it was after the game stops.
+			IsRunning = true;
 			string original_console_title = Console.Title;
 			Console.Title = $"{name} Debugger";
 
-			// Hide the console window until we know if the user wants debug mode.
-			// TODO(LOGIQ): Not if the console was already open before the game was called
-			if (!Debug.DebugMode)
-				ShowWindow(GetConsoleWindow(), SW_HIDE);
-
-			if (Debug.DebugMode)
+			// Print helpful headers so users know what they're looking at, and a separator to keep
+			// things clean and tidy
+			Console.WriteLine();
+			Console.WriteLine("Line H  M  S   Ms  Channel        Message", Color.DimGray);
+			string separator = "────┼──┼──┼──┼┼───┼──────────────┼─────────";
+			for (int i = separator.Length; i < Console.BufferWidth - 1; ++i)
 			{
-				// Ensure the console window meets minimum width requirements (so as to avoid printouts ending
-				// up wrapping onto multiple lines, as much as possible) 
-				if (Console.BufferWidth < 160)
-				{
-					Console.SetBufferSize(160, Console.BufferHeight);
-				}
-
-				// Print helpful headers so users know what they're looking at, and a separator to keep
-				// things clean and tidy
-				Console.WriteLine();
-				Console.WriteLine("Line H  M  S   Ms  Channel        Message", Color.DimGray);
-				string separator      = "────┼──┼──┼──┼┼───┼──────────────┼─────────";
-				for (int i = separator.Length; i < Console.BufferWidth - 1; ++i)
-				{
-					separator += "─";
-				}
-
-				Console.WriteLine(separator, Color.DimGray);
+				separator += "─";
 			}
+
+			Console.WriteLine(separator, Color.DimGray);
 
 			// Attempt to run the game, and catch any exceptions that are thrown. We'll assume that all
 			//  exceptions are bad (because, well, they are!), and if the game wants to allow any exceptions
 			//  it will have to explicitly catch them.
 			try
 			{
+				if (HasCrashed && ConstructorException != null)
+					throw ConstructorException;
+				
 				Debug.LogDebug("Starting game");
 				Debug.LogEngineMessage("This game is using LogixEngine version " + LogixEngineVersion);
 				Debug.LogDebugRegisteredTypes();
@@ -246,14 +259,11 @@ namespace LogixEngine
 			catch (Exception exception)
 			{
 				// An exception has been caught, so treat the game as having 'crashed'.
-				has_crashed = true;
+				HasCrashed = true;
 
-				// Close the window and make sure it actually closes here and now.
 				window.Close();
 				window.ProcessEvents();
-
-				// If in debug mode, print the exception using Debug so as to have syntax highlighting,
-				//  line numbers and timestamps
+				
 				if (Debug.DebugMode)
 				{
 					// TODO(LOGIQ): Debug.ResetIndentation();
@@ -263,9 +273,21 @@ namespace LogixEngine
 					while (exc != null)
 					{
 						// Print the exception type and message (if it has one)
-						Debug.LogCriticalContinued(!string.IsNullOrEmpty(exc.Message)
-							                           ? $"Caused by an {exc.GetType().Name} with the message: {exc.Message}"
-							                           : $"Caused by an {exc.GetType().Name}");
+						Debug.LogCriticalContinued($"Caused by an {exc.GetType().Name}" + (!string.IsNullOrEmpty(exc.Message) ? " with the message:" : ""));
+						if (!string.IsNullOrEmpty(exc.Message))
+						{
+							const int max_message_characters_per_line = 90;
+							if (exc.Message.Length > max_message_characters_per_line)
+							{
+								IEnumerable<string> lines = StringUtils.SplitToLines(exc.Message, max_message_characters_per_line);
+								foreach (string line in lines)
+								{
+									Debug.LogErrorContinued(line);
+								}
+							}
+							else
+								Debug.LogErrorContinued(exc.Message);
+						}
 
 						// Print the stacktrace, reformatting it as we go to make it shorter and easier to understand
 						if (!string.IsNullOrEmpty(exc.StackTrace))
@@ -283,8 +305,6 @@ namespace LogixEngine
 						// TODO(LOGIQ): Debug.Indent();
 					}
 				}
-				// If not in debug mode, print the exception using the normal System.Console.WriteLine
-				//  function, so as to not cause strange re-colouring of the console text
 				else
 				{
 					Console.WriteLine();
@@ -315,18 +335,13 @@ namespace LogixEngine
 				}
 			}
 
-			// Ensure that the shutdown function has been run (this may not happen if an exception was
-			//  caught). If this has been called already, nothing will happen.
 			Dispose();
 
 			// TODO(LOGIQ): Save log
 
-			// If in debug mode, hold the console just to make sure that the console doesn't immediately close
-			//  in case some shutdown messages need to be checked.
-			if (Debug.DebugMode)
+			if (HasConsole)
 			{
-				Debug.LogEngineMessage("Press any key to exit.");
-				Console.Write("\tPRESS ANY KEY...", Debug.ColourEngine);
+				Console.Write("\tPRESS ANY KEY TO RETURN...", Debug.ColourEngine);
 				Console.ReadKey();
 
 				string end_separator = "────────────────────────────────────────────";
@@ -336,20 +351,10 @@ namespace LogixEngine
 				}
 
 				Console.WriteLine(end_separator, Color.DimGray);
-			}
-			// If not in debug mode and the game crashed, hold the console to make sure the user is aware of
-			//  what has happened.
-			else if (has_crashed)
-			{
-				System.Console.Write("\tPress any key to aknowledge...");
-				System.Console.ReadKey();
-			}
 
-			// Now revert the console's title back to what it was (in case the user is going to continue using
-			//  the console) and show & focus the console window.
-			Console.Title = original_console_title;
-			ShowWindow(GetConsoleWindow(), SW_SHOW);
-			FocusConsole(GetConsoleWindow());
+				Console.Title = original_console_title;
+				FocusConsole(GetConsoleWindow());
+			}
 		}
 
 		#endregion
@@ -477,28 +482,34 @@ namespace LogixEngine
 
 		public void Dispose()
 		{
-			if (has_disposed)
+			if (HasDisposed)
 				return;
 
-			Shutdown(has_crashed);
-			has_disposed = true;
+			Debug.LogDebugTask("Deleting unmanaged resources", new Task(() =>
+			{
+				foreach (UnmanagedResource unmanaged_resource in UnmanagedResource.UnmanagedResources)
+					unmanaged_resource.Cleanup();
+			}));
+
+			Shutdown(HasCrashed);
+			HasDisposed = true;
 		}
 
 		#endregion
-		
+
 		#region Rerouted Functions
 
 		protected static void RegisterType(string type)
 		{
 			Debug.RegisterType(type);
 		}
-		
+
 		protected static void RegisterTypes(params string[] types)
 		{
 			foreach (string type in types)
 				Debug.RegisterType(type);
 		}
-		
+
 		#endregion
 	}
 }
