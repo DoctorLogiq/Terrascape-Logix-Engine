@@ -61,14 +61,6 @@ namespace LogixEngine.Utility
 
 		private const string TimestampPlaceholder = "             ";
 
-		private static readonly string TagInfo        = $"{Interpunct}{Interpunct}{Interpunct}{Interpunct}{Interpunct}{Interpunct}{Interpunct} INFO {AngleQuotesR} ";
-		private static readonly string TagDebug       = $"{Interpunct}{Interpunct}{Interpunct}{Interpunct}{Interpunct}{Interpunct} DEBUG {AngleQuotesR} ";
-		private static readonly string TagWarning     = $"{Interpunct}{Interpunct}{Interpunct}{Interpunct} WARNING {AngleQuotesR} ";
-		private static readonly string TagError       = $"{Interpunct}{Interpunct}{Interpunct}{Interpunct}{Interpunct}{Interpunct} ERROR {AngleQuotesR} ";
-		private static readonly string TagCritical    = $"{Interpunct}{Interpunct}{Interpunct} CRITICAL {AngleQuotesR} ";
-		private static readonly string TagEngine      = $"LOGIX-ENGINE {AngleQuotesR} ";
-		private const           string TagPlaceholder = "                 ";
-
 		public static void RunTests()
 		{
 			LogDebug("Test debug");
@@ -117,29 +109,29 @@ namespace LogixEngine.Utility
 		#endregion
 
 		#region Styling / Syntax Highlighting
-
+		
 		private static readonly  Color ColourTimestamp = Color.DimGray;
 		private static readonly  Color ColourTag       = Color.CornflowerBlue;
 		private static readonly  Color ColourInfo      = Color.Azure;
 		private static readonly  Color ColourDebug     = Color.DimGray;
-		private static readonly  Color ColourWarning   = Color.Goldenrod;
-		private static readonly  Color ColourError     = Color.IndianRed;
-		private static readonly  Color ColourCritical  = Color.Red;
-		internal static readonly Color ColourEngine    = Color.LimeGreen;
+		private static readonly  Color ColourWarning   = Color.FromArgb(243, 119, 53);
+		private static readonly  Color ColourError     = Color.FromArgb(233, 75, 60);
+		private static readonly  Color ColourCritical  = Color.FromArgb(209, 17, 65);
+		internal static readonly Color ColourEngine    = Color.FromArgb(60, 233, 75);
 
-		private static readonly Color SyntaxColourNumber     = Color.DodgerBlue;
-		private static readonly Color SyntaxColourIdentifier = Color.Coral;
-		private static readonly Color SyntaxColourString     = Color.Yellow;
-		private static readonly Color SyntaxColourBoolTrue   = Color.LimeGreen;
-		private static readonly Color SyntaxColourBoolFalse  = Color.OrangeRed;
-		private static readonly Color SyntaxColourType       = Color.DeepPink;
+		private static readonly Color SyntaxColourNumber     = Color.FromArgb(0, 174, 219);
+		private static readonly Color SyntaxColourIdentifier = Color.FromArgb(255, 196, 37);
+		private static readonly Color SyntaxColourString     = Color.FromArgb(255, 196, 37);
+		private static readonly Color SyntaxColourBoolTrue   = Color.FromArgb(60, 233, 75);
+		private static readonly Color SyntaxColourBoolFalse  = Color.FromArgb(233, 75, 60);
+		private static readonly Color SyntaxColourType       = Color.FromArgb(209,17,65);
 
 		private const  string RegexNumber     = @"[-+.]?\d+([\.:,]\d+)*";
 		private const  string RegexIdentifier = @"'[A-z0-9_]+'";
 		private const  string RegexString     = "\"(?:[^\"\\\\]|\\.)*\"";
 		private const  string RegexBoolTrue   = @"\b(yes|Yes|YES|true|True|TRUE)\b";
 		private const  string RegexBoolFalse  = @"\b(no|No|NO|false|False|FALSE)\b";
-		private static string regex_type      = @"\b([A-z]*(Exception)|Texture|Shader|Model)\b";
+		private static string regex_type      = @"\b([A-z]*(Exception)|int|bool|float|double|string|char|Texture|Shader|Model)\b";
 
 		private static readonly StyleSheet SyntaxStyleSheetInfo     = new StyleSheet(ColourInfo);
 		private static readonly StyleSheet SyntaxStyleSheetDebug    = new StyleSheet(ColourDebug);
@@ -147,7 +139,7 @@ namespace LogixEngine.Utility
 		private static readonly StyleSheet SyntaxStyleSheetError    = new StyleSheet(ColourError);
 		private static readonly StyleSheet SyntaxStyleSheetCritical = new StyleSheet(ColourCritical);
 
-		private static List<string> registered_types = new List<string>();
+		private static readonly List<string> RegisteredTypes = new List<string>();
 
 		internal static void RegisterType(string type)
 		{
@@ -163,14 +155,14 @@ namespace LogixEngine.Utility
 			SyntaxStyleSheetError.Styles[5].Target    = new TextPattern(regex_type);
 			SyntaxStyleSheetCritical.Styles[5].Target = new TextPattern(regex_type);
 
-			registered_types.Add(type);
+			RegisteredTypes.Add(type);
 		}
 
 		internal static void LogDebugRegisteredTypes()
 		{
 			int    i         = 0;
 			string type_list = "";
-			foreach (string type in registered_types)
+			foreach (string type in RegisteredTypes)
 			{
 				if (i < 10)
 				{
@@ -188,7 +180,7 @@ namespace LogixEngine.Utility
 			if (type_list.Length > 0)
 				LogDebug("Registered types: " + type_list);
 
-			registered_types.Clear();
+			RegisteredTypes.Clear();
 		}
 
 		static Debug()
@@ -249,11 +241,10 @@ namespace LogixEngine.Utility
 				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
 			
-			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
-			Console.Write(TagInfo,                       ColourTag);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetInfo);
+			Console.Write($"{++line:0000} {Timestamp} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetInfo);
 
-			Log.Add($"{line:0000} {Timestamp} {TagInfo} {indentation_string}{message}");
+			Log.Add($"{line:0000} {Timestamp} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -276,11 +267,38 @@ namespace LogixEngine.Utility
 				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
 
-			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
-			Console.Write(TagDebug,                      ColourTag);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetDebug);
+			Console.Write($"{++line:0000} {Timestamp} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetDebug);
 
-			Log.Add($"{line:0000} {Timestamp} {TagDebug} {indentation_string}{message}");
+			Log.Add($"{line:0000} {Timestamp} {AngleQuotesR} {indentation_string}{message}");
+		}
+		
+		/// <summary>
+		/// Logs the given [message] on the "Debug" channel. Only works if the game is running
+		/// with the [-debug] flag (is running in debug mode). This overload disables syntax
+		/// highlighting in favour of using a non-default colour.
+		/// <para>
+		/// The message will be formatted to contain the line number, timestamp and channel,
+		/// and may also contain syntax-highlighting.
+		/// </para>
+		/// </summary>
+		/// <param name="message">The message to write</param>
+		/// <param name="colour">The colour to write the bulk of the message in</param>
+		public static void LogDebug(string message, Color colour)
+		{
+			if (!DebugMode)
+				return;
+			
+			if (!Game.IsRunning)
+			{
+				Game.HasCrashed           = true;
+				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
+			}
+
+			Console.Write($"{++line:0000} {Timestamp} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.Write($"{message}\n", colour);
+
+			Log.Add($"{line:0000} {Timestamp} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -299,11 +317,10 @@ namespace LogixEngine.Utility
 				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
 			
-			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
-			Console.Write(TagWarning,                    ColourTag);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetWarning);
+			Console.Write($"{++line:0000} {Timestamp} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetWarning);
 
-			Log.Add($"{line:0000} {Timestamp} {TagWarning} {indentation_string}{message}");
+			Log.Add($"{line:0000} {Timestamp} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -322,11 +339,10 @@ namespace LogixEngine.Utility
 				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
 			
-			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
-			Console.Write(TagError,                      ColourTag);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetError);
+			Console.Write($"{++line:0000} {Timestamp} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetError);
 
-			Log.Add($"{line:0000} {Timestamp} {TagError} {indentation_string}{message}");
+			Log.Add($"{line:0000} {Timestamp} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -345,11 +361,10 @@ namespace LogixEngine.Utility
 				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
 			
-			Console.Write($"{++line:0000} {Timestamp} ", ColourTimestamp);
-			Console.Write(TagCritical,                   ColourTag);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetCritical);
+			Console.Write($"{++line:0000} {Timestamp} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetCritical);
 
-			Log.Add($"{line:0000} {Timestamp} {TagCritical} {indentation_string}{message}");
+			Log.Add($"{line:0000} {Timestamp} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -369,10 +384,10 @@ namespace LogixEngine.Utility
 				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
 			
-			Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetInfo);
+			Console.Write($"{++line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetInfo);
 
-			Log.Add($"{line:0000} {TimestampPlaceholder} {TagPlaceholder} {indentation_string}{message}");
+			Log.Add($"{line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -397,10 +412,10 @@ namespace LogixEngine.Utility
 			if (!DebugMode)
 				return;
 
-			Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetDebug);
+			Console.Write($"{++line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetDebug);
 
-			Log.Add($"{line:0000} {TimestampPlaceholder} {TagPlaceholder} {indentation_string}{message}");
+			Log.Add($"{line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -420,10 +435,10 @@ namespace LogixEngine.Utility
 				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
 			
-			Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetWarning);
+			Console.Write($"{++line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetWarning);
 
-			Log.Add($"{line:0000} {TimestampPlaceholder} {TagPlaceholder} {indentation_string}{message}");
+			Log.Add($"{line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -443,10 +458,10 @@ namespace LogixEngine.Utility
 				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
 			
-			Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetError);
+			Console.Write($"{++line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetError);
 
-			Log.Add($"{line:0000} {TimestampPlaceholder} {TagPlaceholder} {indentation_string}{message}");
+			Log.Add($"{line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -466,10 +481,10 @@ namespace LogixEngine.Utility
 				Game.ConstructorException = new ApplicationException("Cannot perform tasks before the game starts running");
 			}
 
-			Console.Write($"{++line:0000} {TimestampPlaceholder} {TagPlaceholder}", ColourTimestamp);
-			Console.WriteStyled($"{indentation_string}{message}\n", SyntaxStyleSheetCritical);
+			Console.Write($"{++line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}", ColourTimestamp);
+			Console.WriteStyled($"{message}\n", SyntaxStyleSheetCritical);
 
-			Log.Add($"{line:0000} {TimestampPlaceholder} {TagPlaceholder} {indentation_string}{message}");
+			Log.Add($"{line:0000} {TimestampPlaceholder} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -479,13 +494,16 @@ namespace LogixEngine.Utility
 		/// </para>
 		/// </summary>
 		/// <param name="message">The message to write</param>
-		internal static void LogEngineMessage(string message)
+		/// <param name="is_debug">Whether or not this message should show only in debug mode</param>
+		internal static void LogEngineMessage(string message, bool is_debug)
 		{
-			Console.Write($"{++line:0000} {Timestamp} ",      ColourTimestamp);
-			Console.Write(TagEngine,                          ColourTag);
-			Console.Write($"{indentation_string}{message}\n", ColourEngine);
+			if (!is_debug || DebugMode)
+			{
+				Console.Write($"{++line:0000} {Timestamp} {AngleQuotesR} {indentation_string}",      ColourTimestamp);
+				Console.Write($"{message}\n", ColourEngine);
+			}
 
-			Log.Add($"{line:0000} {Timestamp} {TagEngine} {indentation_string}{message}");
+			Log.Add($"{line:0000} {Timestamp} {AngleQuotesR} {indentation_string}{message}");
 		}
 
 		/// <summary>
@@ -495,7 +513,7 @@ namespace LogixEngine.Utility
 		internal static void WriteRaw(string message)
 		{
 			System.Console.WriteLine($"  {AngleQuotesR} {message}");
-			Log.Add($"{++line:0000} {Timestamp} {TagPlaceholder} {message}");
+			Log.Add($"{++line:0000} {Timestamp} {AngleQuotesR} {message}");
 		}
 
 		/// <summary>
@@ -534,7 +552,7 @@ namespace LogixEngine.Utility
 				task.RunSynchronously();
 			}
 		}
-
+		
 		/// <summary>
 		/// Profiles how long a task takes to complete, printing the result in the Debug channel once
 		/// the task has been run synchronously. Can also act like LogDebugTask(...) if the corresponding
@@ -575,22 +593,86 @@ namespace LogixEngine.Utility
 
 				// NOTE: If a task throws an exception it won't be caught, so we have to check that the task didn't throw one, and if it did, we need to re-throw it
 				if (task.IsFaulted && task.Exception?.InnerException != null)
-					throw task.Exception.InnerException;
+					throw task.Exception.InnerException; // TODO(LOGIQ): We need the stacktrace!
 
 				stopwatch.Stop();
 				if (log_debug_task)
 				{
 					Unindent();
-					LogDebug($"{task_name} completed in {stopwatch.ElapsedMilliseconds} {(stopwatch.ElapsedMilliseconds == 1 ? "millisecond" : "milliseconds")}");
+					LogDebug($"...completed in {stopwatch.ElapsedMilliseconds} {(stopwatch.ElapsedMilliseconds == 1 ? "millisecond" : "milliseconds")}");
 				}
 				else
 				{
-					LogDebug($"{task_name} took {stopwatch.ElapsedMilliseconds} {(stopwatch.ElapsedMilliseconds == 1 ? "millisecond" : "milliseconds")}");
+					LogDebug($"...took {stopwatch.ElapsedMilliseconds} {(stopwatch.ElapsedMilliseconds == 1 ? "millisecond" : "milliseconds")}");
 				}
 			}
 			else
 			{
 				task.RunSynchronously();
+			}
+		}
+
+		/// <summary>
+		/// Profiles how long a task takes to complete, printing the result in the Debug channel once
+		/// the task has been run synchronously. Can also act like LogDebugTask(...) if the corresponding
+		/// parameter ([log_debug_task]) is set to [true].
+		/// <para>
+		/// NOTE: This does not account for the time it takes to print to the console, or create, start
+		/// and stop the timer, so expect a little variance in the results. Accuracy is dictated by the
+		/// system clock granularity (or resolution, if you will), as well as the granularity of .NET's
+		/// timers[*¹], which can be expected to be around 12-15 milliseconds, according to multiple
+		/// sources. This also imparts a minimum time readout of 12-15 milliseconds, so if the task took
+		/// less time than that, you may not expect the results to be accurate.
+		/// </para>
+		/// Use IsProfilerHighResolution() and GetProfilerResolution() to check the granularity available
+		/// to you when profiling.
+		/// <para>
+		/// *¹ this uses System.Diagnostics.Stopwatch, which is said to be the highest resolution
+		/// timer in .NET.
+		/// </para>
+		/// </summary>
+		/// <param name="task_name">The name of the task. Should start with a capital letter</param>
+		/// <param name="log_debug_task">Whether or not to print the [task_name] before running the task
+		/// (see LogDebugTask(...) for more info)</param>
+		/// <param name="task">The task to perform</param>
+		public static object Profile<T>(string task_name, bool log_debug_task, Task<T> task) where T : class
+		{
+			if (DebugMode)
+			{
+				if (log_debug_task)
+				{
+					LogDebug(task_name + "...");
+					Indent();
+				}
+
+				Stopwatch stopwatch = new Stopwatch();
+				stopwatch.Start();
+
+				task.RunSynchronously();
+				T result = task.Result;
+
+				// NOTE: If a task throws an exception it won't be caught, so we have to check that the task didn't throw one, and if it did, we need to re-throw it
+				if (task.IsFaulted && task.Exception?.InnerException != null)
+					throw task.Exception.InnerException; // TODO(LOGIQ): We need the stacktrace!
+
+				stopwatch.Stop();
+				if (log_debug_task)
+				{
+					Unindent();
+					LogDebug($"...completed in {stopwatch.ElapsedMilliseconds} {(stopwatch.ElapsedMilliseconds == 1 ? "millisecond" : "milliseconds")}");
+				}
+				else
+				{
+					LogDebug($"...took {stopwatch.ElapsedMilliseconds} {(stopwatch.ElapsedMilliseconds == 1 ? "millisecond" : "milliseconds")}");
+				}
+
+				return result;
+			}
+			else
+			{
+				task.Start();
+				T result = task.Result; // TODO(LOGIQ): Test
+				return result;
 			}
 		}
 

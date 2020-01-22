@@ -15,7 +15,7 @@ namespace LogixEngine.Rendering
 		
 		public abstract identifier Identifier { get; }
 		[SuppressMessage("ReSharper", "InconsistentNaming")]
-		protected abstract int OpenGL_ID { get; }
+		protected abstract int ObjectID { get; }
 
 		protected UnmanagedResource()
 		{
@@ -24,7 +24,7 @@ namespace LogixEngine.Rendering
 
 		internal void Cleanup()
 		{
-			Debug.LogDebug($"Deleting unmanaged resource '{Identifier}' with OpenGL ID {OpenGL_ID}");
+			Debug.LogDebug($"Deleting unmanaged resource ({GetType().Name}) '{Identifier}' with OpenGL ID {ObjectID}");
 			Delete();
 		}
 

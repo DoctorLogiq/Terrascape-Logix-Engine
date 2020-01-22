@@ -1,23 +1,16 @@
-﻿#region Imports
-
-// System
-using LogixEngine._Extensions;
+﻿using LogixEngine._Extensions;
 using LogixEngine.Rendering;
+using LogixEngine.Utility;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
-using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using Console = Colorful.Console;
-// OpenTK
 using OpenTK;
 using OpenTK.Graphics;
-// LogixEngine
-using LogixEngine.Utility;
-using System.Threading.Tasks;
-
-#endregion
+using System.Diagnostics.CodeAnalysis;
 
 namespace LogixEngine
 {
@@ -25,30 +18,87 @@ namespace LogixEngine
      * Game.cs created by DrLogiq on 15-01-2020 13:01.
      * Copyright © DrLogiq. All rights reserved.
      * ----------------------------------------------------------------------------  */
-	[SuppressMessage("ReSharper", "FieldCanBeMadeReadOnly.Local")]
+	[SuppressMessage("ReSharper", "EventNeverSubscribedTo.Global")]
 	public abstract class Game : IDisposable
 	{
 		public const string LogixEngineVersion = "1.0.0";
 
-		private readonly string     name;
-		private readonly string     version; // TODO(LOGIQ): Make a version class to use here
-		private readonly int        target_cps;
-		private          int        target_fps;
-		private readonly bool       update_title_in_render;
-		private readonly bool       render_while_resizing = true;
-		private readonly GameWindow window;
-		private          string     title_format;
-		public static    double     Width,       Height, HalfWidth, HalfHeight;
-		internal static bool IsRunning, HasCrashed, HasDisposed, HasConsole;
-		internal static ApplicationException ConstructorException;
-		private          bool       cf_per_second_override;
-		
-		#region Events
+		#region Fields / Properties / Events
 
-		public delegate void LoadCompleteHandler();
-		public event LoadCompleteHandler LoadComplete;
-		
-		#endregion
+		/// <summary>
+		/// Determines if this application was started by double-clicking the .exe, or run from a command line
+		/// </summary>
+		// NOTE(LOGIQ): Thanks to StackOverflow user 'Fowl' for this: https://stackoverflow.com/a/18307640/11878570
+		private static readonly bool StartedFromGui = !Console.IsOutputRedirected
+		                                              && !Console.IsInputRedirected
+		                                              && !Console.IsErrorRedirected
+		                                              && Environment.UserInteractive
+		                                              && Environment.CurrentDirectory == System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly()?.Location)
+		                                              && Console.CursorTop == 0 && Console.CursorLeft == 0
+		                                              && Console.Title == Environment.GetCommandLineArgs()[0]
+		                                              && Environment.GetCommandLineArgs()[0] == System.Reflection.Assembly.GetEntryAssembly()?.Location;
+
+		/// <summary>The game's display name</summary>
+		private readonly string name;
+
+		/// <summary>The game's version number</summary>
+		private readonly string version; // TODO(LOGIQ): Make a version class to use here
+
+		/// <summary>The game's target cycles (update ticks) per second</summary>
+		private readonly int target_cps;
+
+		/// <summary>Whether or not to update the window title in the render cycle. If false, update the title in the update cycle instead</summary>
+		private readonly bool update_title_in_render;
+
+		/// <summary>Whether or not to render while the game window is being resized</summary>
+		private readonly bool render_while_resizing = true;
+
+		/// <summary>The game's window</summary>
+		private readonly GameWindow window;
+
+		/// <summary>The game window's title format string. Variables in this string will be replaced when the title is updated</summary>
+		private static string title_format;
+
+		/// <summary>The minimum width (in pixels) the game window can have</summary>
+		private static int minimum_width;
+
+		/// <summary>The minimum height (in pixels) the game window can have</summary>
+		private static int minimum_height;
+
+		/// <summary>The width of the game window, in pixels (excluding window decorations, i.e. safe to use for rendering)</summary>
+		public static double Width;
+
+		/// <summary>The height of the game window, in pixels (excluding window decorations, i.e. safe to use for rendering)</summary>
+		public static double Height;
+
+		/// <summary>Half the width of the game window, in pixels. Useful for screen centering during rendering</summary>
+		public static double HalfWidth;
+
+		/// <summary>Half the height of the game window, in pixels. Useful for screen centering during rendering</summary>
+		public static double HalfHeight;
+
+		/// <summary>Whether or not we are in the Run() function. Used to determine if certain functions are being used too early</summary>
+		internal static bool IsRunning;
+
+		/// <summary>Whether or not the game is considered to be in a 'crashed' state (true if an unhandled exception has been caught)</summary>
+		internal static bool HasCrashed;
+
+		/// <summary>Whether or not the game has had its Dispose() and Shutdown() functions called</summary>
+		internal static bool HasDisposed;
+
+		protected static bool CanCancelWindowClose = true;
+
+		/// <summary>Whether or not the game has a console</summary>
+		internal static bool HasConsole; // TODO(LOGIQ): Is this still needed?
+
+		/// <summary>The exception (if any) thrown during the constructor phase (or any point before Run() is called). Can (and should) be null</summary>
+		internal static ApplicationException ConstructorException;
+
+		/// <summary>Whether or not to override the cycles and frames per second displays in the window title (used when the game window is being resized)</summary>
+		private static bool cf_per_second_override;
+
+		/// <summary>The game's target render cycles per second</summary>
+		private int target_fps;
 
 		protected int TargetFPS
 		{
@@ -64,48 +114,25 @@ namespace LogixEngine
 			}
 		}
 
-		#region Interop Services
+		public delegate void BlankEventHandler();
 
-		// ReSharper disable all
+		public delegate bool WindowCloseRequestedHandler();
 
-		[DllImport("kernel32.dll")]
-		static extern IntPtr GetConsoleWindow();
-
-		[DllImport("user32.dll")]
-		static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-		[DllImport("user32.dll")]
-		public static extern bool ShowWindowAsync(HandleRef hWnd, int nCmdShow);
-
-		[DllImport("user32.dll")]
-		public static extern bool SetForegroundWindow(IntPtr WindowHandle);
-
-		[DllImport("user32.dll", EntryPoint = "FindWindow", SetLastError = true)]
-		static extern IntPtr FindWindowByCaption(IntPtr zeroOnly, string lpWindowName);
-
-		const int SW_RESTORE = 9;
-		const int SW_HIDE    = 0;
-		const int SW_SHOW    = 1;
-
-		private static void FocusConsole(IntPtr window)
-		{
-			string originalTitle = Console.Title;
-			string uniqueTitle   = Guid.NewGuid().ToString();
-			Console.Title = uniqueTitle;
-			Thread.Sleep(50);
-			IntPtr handle = FindWindowByCaption(IntPtr.Zero, uniqueTitle);
-
-			Console.Title = originalTitle;
-
-			ShowWindowAsync(new HandleRef(null, handle), SW_RESTORE);
-			SetForegroundWindow(handle);
-		}
-
-		// ReSharper restore all
+		public event BlankEventHandler PreWarmStarted;
+		public event BlankEventHandler PreWarmCompleted;
+		public event BlankEventHandler LoadStarted;
+		public event BlankEventHandler LoadCompleted;
+		public event BlankEventHandler EnableOpenGLCapabilities;
+		/// <summary>
+		/// Handles an event where the window is wanting to close. The subscriber (which should only ever be the game) can return true
+		/// to cancel the window close event, however, this is not recommended. Only intended to be used if you want to warn players
+		/// about potential loss of data as a result of not having saved.
+		/// </summary>
+		public event WindowCloseRequestedHandler WindowCloseRequested;
 
 		#endregion
 
-		#region Constructor And Run Function
+		#region Constructor
 
 		/// <summary>
 		/// Constructs your game. This constructor should only be called once, EVER! You MUST pass in the program arguments
@@ -116,6 +143,8 @@ namespace LogixEngine
 		/// <param name="version">The game's version</param>
 		/// <param name="startup_width">The initial width of the game window</param>
 		/// <param name="startup_height">The initial height of the game window</param>
+		/// <param name="minimum_width">The minimum width the game window can have</param>
+		/// <param name="minimum_height">The minimum height the game window can have</param>
 		/// <param name="target_cps">The target cycle (update) rate (in Hz) to run the game at, this cannot be changed later</param>
 		/// <param name="target_fps">The target render rate (in Hz) to start the game at, this can be changed later</param>
 		/// <param name="arguments">MANDATORY - pass the unmodified program arguments from your Main() entry-point function here!</param>
@@ -125,26 +154,22 @@ namespace LogixEngine
 		/// <param name="update_title_in_render">Whether to update the title in the render cycle. If set to [false], the
 		/// title will be updated in the update cycle instead</param>
 		// TODO(LOGIQ): Implement a singleton design pattern here because you know programmers don't follow rules!
-		protected Game(string   name,
-			string              version,
-			int                 startup_width,
-			int                 startup_height,
-			int                 target_cps,
-			int                 target_fps,
-			IEnumerable<string> arguments,
-			WindowMode          window_mode            = WindowMode.Default,
-			int                 gl_major               = 4,
-			int                 gl_minor               = 4,
-			bool                update_title_in_render = true)
+		protected Game(string name,                             string              version, int startup_width, int startup_height, int minimum_width, int minimum_height, int target_cps,
+			int               target_fps,                       IEnumerable<string> arguments,
+			WindowMode        window_mode = WindowMode.Default, int                 gl_major = 4, int gl_minor = 4, bool update_title_in_render = true)
 		{
-			ShowWindow(GetConsoleWindow(), SW_HIDE);
-			
+			// If started from windows explorer (double-clicking the .exe, usually), hide the console
+			if (StartedFromGui)
+				ShowWindow(GetConsoleWindow(), SW_HIDE);
+
 			// Set variables
 			this.name                   = name;
 			this.version                = version;
 			this.target_cps             = target_cps;
 			this.target_fps             = target_fps;
 			this.update_title_in_render = update_title_in_render;
+			Game.minimum_width          = minimum_width;
+			Game.minimum_height         = minimum_height;
 
 			// Set the default title format using the game's name
 			string title_separator = $"     {SpecialCharacters.Separator}     ";
@@ -164,19 +189,29 @@ namespace LogixEngine
 			// Set the window event handlers
 			window.Load += (sender, args) =>
 			{
-				Debug.LogEngineMessage("Invoking game pre-warm");
+				Debug.LogEngineMessage("Enabling OpenGL capabilities", true);
+				EnableOpenGLCapabilities?.Invoke();
+				
+				Debug.LogEngineMessage("Invoking game pre-warm", true);
+				PreWarmStarted?.Invoke();
 				PreWarm();
-				Debug.LogEngineMessage("Invoking game load");
-				Load();
-				Debug.LogEngineMessage("Game load finished");
-				LoadComplete?.Invoke();
-			};
+				PreWarmCompleted?.Invoke();
 
+				Debug.LogEngineMessage("Invoking game load", true);
+				LoadStarted?.Invoke();
+				Load();
+				Debug.LogEngineMessage("Game load finished", true);
+				LoadCompleted?.Invoke();
+			};
 			window.UpdateFrame += (sender, args) => DoCycle(args.Time);
 			window.RenderFrame += (sender, args) => DoRender(args.Time);
-
 			window.Resize += (sender, args) =>
 			{
+				if (window.Width < Game.minimum_width)
+					window.Width = Game.minimum_width;
+				if (window.Height < Game.minimum_height)
+					window.Height = Game.minimum_height;
+
 				Width      = window.Width;
 				Height     = window.Height;
 				HalfWidth  = Width / 2D;
@@ -191,6 +226,27 @@ namespace LogixEngine
 					DoRender(0.0D);
 				}
 			};
+			window.Closing += (sender, args) =>
+			{
+				if (CanCancelWindowClose)
+				{
+					Debug.LogDebug("Window close requested");
+					bool? cancel = WindowCloseRequested?.Invoke();
+					if (cancel.HasValue && cancel.Value)
+					{
+						Debug.LogDebug("Window close request denied by the game", Color.FromArgb(233, 75, 60));
+						args.Cancel = true;
+					}
+					else if (cancel.HasValue)
+					{
+						Debug.LogDebug("Window close request accepted by the game", Color.FromArgb(60, 233, 75));
+					}
+					else
+					{
+						Debug.LogDebug("Window close request accepted (event unhandled)");
+					}
+				}
+			};
 
 			// Process program arguments
 			foreach (string argument in arguments)
@@ -202,14 +258,16 @@ namespace LogixEngine
 						break;
 					case "-debug":
 					{
-						ShowWindow(GetConsoleWindow(), SW_SHOW);
-						HasConsole = true;
+						if (StartedFromGui)
+							ShowWindow(GetConsoleWindow(), SW_SHOW);
+						HasConsole      = true;
 						Debug.DebugMode = true;
 					}
 						break;
 					case "-console":
 					{
-						ShowWindow(GetConsoleWindow(), SW_SHOW);
+						if (StartedFromGui)
+							ShowWindow(GetConsoleWindow(), SW_SHOW);
 						HasConsole = true;
 					}
 						break;
@@ -219,53 +277,65 @@ namespace LogixEngine
 					}
 						break;
 				}
-			} // end of: foreach (string argument in arguments)...
+			}
 		}
+
+		#endregion
+
+		#region Run Function
 
 		protected void Run()
 		{
-			// Store the console's original title so that if the game was called from an existing console, the
-			//  title can be reverted back to what it was after the game stops.
 			IsRunning = true;
+
+			#region Console Stuff
+
+			// Store the console's original title so it can be reverted back later
 			string original_console_title = Console.Title;
+			// Set the console's new title
 			Console.Title = $"{name} Debugger";
-
-			// Print helpful headers so users know what they're looking at, and a separator to keep
-			// things clean and tidy
+			// Print a header to help users understand the layout of the debug messages
 			Console.WriteLine();
-			Console.WriteLine("Line H  M  S   Ms  Channel        Message", Color.DimGray);
-			string separator = "────┼──┼──┼──┼┼───┼──────────────┼─────────";
+			/* DISABLED:
+			Console.WriteLine("Line H  M  S   Ms    Message", Color.DimGray);
+			string separator =      "────┼──┼──┼──┼┼───┼─┼─────────";*/
+			string separator = "";
 			for (int i = separator.Length; i < Console.BufferWidth - 1; ++i)
-			{
 				separator += "─";
-			}
-
 			Console.WriteLine(separator, Color.DimGray);
 
-			// Attempt to run the game, and catch any exceptions that are thrown. We'll assume that all
-			//  exceptions are bad (because, well, they are!), and if the game wants to allow any exceptions
-			//  it will have to explicitly catch them.
+			#endregion
+
+			#region RUN GAME
+
+			// Attempt to run the game and catch unhandled exceptions
 			try
 			{
+				// Make sure that first we check if an exception was thrown already from any pre-run phase
 				if (HasCrashed && ConstructorException != null)
 					throw ConstructorException;
-				
+				// If no exceptions have already been thrown, we're good to start!
 				Debug.LogDebug("Starting game");
-				Debug.LogEngineMessage("This game is using LogixEngine version " + LogixEngineVersion);
+				Debug.LogEngineMessage("This game is using LogixEngine version " + LogixEngineVersion, false);
 				Debug.LogDebugRegisteredTypes();
+				// RUN THE GAME, WOO!
 				window.Run(target_cps, target_fps);
+				// This line shouldn't be hit until the window closes
 				Debug.LogDebug("Stopping game");
 			}
 			catch (Exception exception)
 			{
 				// An exception has been caught, so treat the game as having 'crashed'.
 				HasCrashed = true;
-
+				
+				CanCancelWindowClose = false;
 				window.Close();
 				window.ProcessEvents();
-				
+
 				if (Debug.DebugMode)
 				{
+					int max_message_characters_per_line = Console.BufferWidth - 22;
+					
 					// TODO(LOGIQ): Debug.ResetIndentation();
 					Debug.LogCritical("An unhandled exception was caught which caused the game to crash (safely).");
 
@@ -276,7 +346,6 @@ namespace LogixEngine
 						Debug.LogCriticalContinued($"Caused by an {exc.GetType().Name}" + (!string.IsNullOrEmpty(exc.Message) ? " with the message:" : ""));
 						if (!string.IsNullOrEmpty(exc.Message))
 						{
-							const int max_message_characters_per_line = 90;
 							if (exc.Message.Length > max_message_characters_per_line)
 							{
 								IEnumerable<string> lines = StringUtils.SplitToLines(exc.Message, max_message_characters_per_line);
@@ -335,11 +404,22 @@ namespace LogixEngine
 				}
 			}
 
+			#endregion
+
+			#region Clean Up
+
+			// Make sure the game has been shut down and unmanaged resources disposed of
 			Dispose();
 
 			// TODO(LOGIQ): Save log
 
-			if (HasConsole)
+			#endregion
+
+			#region Hold Console
+
+			// If the console is open, hold it open until the user confirms
+			// TODO(LOGIQ): Should there be a switch for this?
+			if (!StartedFromGui || HasConsole)
 			{
 				Console.Write("\tPRESS ANY KEY TO RETURN...", Debug.ColourEngine);
 				Console.ReadKey();
@@ -355,11 +435,11 @@ namespace LogixEngine
 				Console.Title = original_console_title;
 				FocusConsole(GetConsoleWindow());
 			}
+
+			#endregion
 		}
 
 		#endregion
-
-		#region Window
 
 		protected void SetTitleFormat(string format)
 		{
@@ -367,7 +447,6 @@ namespace LogixEngine
 			UpdateTitle();
 		}
 
-		[SuppressMessage("ReSharper", "ConvertIfStatementToConditionalTernaryExpression")]
 		private void UpdateTitle()
 		{
 			// Add game name
@@ -412,16 +491,10 @@ namespace LogixEngine
 			window.Title = title;
 		}
 
-		#endregion
-
-		#region Input
-
 		private void UpdateInput()
 		{
 			// TODO(LOGIQ): Implement
 		}
-
-		#endregion
 
 		private void DoCycle(double delta)
 		{
@@ -443,6 +516,32 @@ namespace LogixEngine
 				UpdateTitle();
 
 			window.SwapBuffers();
+		}
+
+		public void Dispose()
+		{
+			if (HasDisposed)
+				return;
+
+			Debug.LogDebugTask("Deleting unmanaged resources", new Task(() =>
+			{
+				foreach (UnmanagedResource unmanaged_resource in UnmanagedResource.UnmanagedResources)
+					unmanaged_resource.Cleanup();
+			}));
+
+			Shutdown(HasCrashed);
+			HasDisposed = true;
+		}
+
+		protected static void RegisterType(string type)
+		{
+			Debug.RegisterType(type);
+		}
+
+		protected static void RegisterTypes(params string[] types) // TODO(LOGIQ): Should this not run in !DebugMode?
+		{
+			foreach (string type in types)
+				Debug.RegisterType(type);
 		}
 
 		#region API
@@ -478,37 +577,42 @@ namespace LogixEngine
 
 		#endregion
 
-		#region Shutdown
+		#region Interop Services
 
-		public void Dispose()
+		// ReSharper disable all
+		[DllImport("kernel32.dll")]
+		static extern IntPtr GetConsoleWindow();
+
+		[DllImport("user32.dll")]
+		static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+		[DllImport("user32.dll")]
+		public static extern bool ShowWindowAsync(HandleRef hWnd, int nCmdShow);
+
+		[DllImport("user32.dll")]
+		public static extern bool SetForegroundWindow(IntPtr WindowHandle);
+
+		[DllImport("user32.dll", EntryPoint = "FindWindow", SetLastError = true)]
+		static extern IntPtr FindWindowByCaption(IntPtr zeroOnly, string lpWindowName);
+
+		const int SW_RESTORE = 9;
+		const int SW_HIDE    = 0;
+		const int SW_SHOW    = 1;
+
+		private static void FocusConsole(IntPtr window)
 		{
-			if (HasDisposed)
-				return;
+			string originalTitle = Console.Title;
+			string uniqueTitle   = Guid.NewGuid().ToString();
+			Console.Title = uniqueTitle;
+			Thread.Sleep(50);
+			IntPtr handle = FindWindowByCaption(IntPtr.Zero, uniqueTitle);
 
-			Debug.LogDebugTask("Deleting unmanaged resources", new Task(() =>
-			{
-				foreach (UnmanagedResource unmanaged_resource in UnmanagedResource.UnmanagedResources)
-					unmanaged_resource.Cleanup();
-			}));
+			Console.Title = originalTitle;
 
-			Shutdown(HasCrashed);
-			HasDisposed = true;
+			ShowWindowAsync(new HandleRef(null, handle), SW_RESTORE);
+			SetForegroundWindow(handle);
 		}
-
-		#endregion
-
-		#region Rerouted Functions
-
-		protected static void RegisterType(string type)
-		{
-			Debug.RegisterType(type);
-		}
-
-		protected static void RegisterTypes(params string[] types)
-		{
-			foreach (string type in types)
-				Debug.RegisterType(type);
-		}
+		// ReSharper restore all
 
 		#endregion
 	}

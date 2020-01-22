@@ -33,6 +33,7 @@ The game uses various flags to control how it starts up. These are subject to ch
 
 ## Things I've learnt along the way
 
+#### Number RegEx
 I appear to have come up with the 'perfect' regular expression for highlighting numbers:
 
 ```csharp
@@ -49,4 +50,23 @@ This RegEx will highlight numbers in all sorts of situations;
 - Numbers containing periods, commas or colons as separators
 
 It will also not highlight numbers with a period after them, if there are no numbers immediately following it.
-The RegEx has gone through many transformations and optimisations, and is now in a good place. 
+The RegEx has gone through many transformations and optimisations, and is now in a good place.
+
+#### Detecting console app startup method
+One of the things I wanted my game to do is only show the console (being a console app and all!) if the user wants it shown.
+This raised some difficulties, because a console app always creates a console, whether you want it or not, and it appeared that there was no easy way to determine if the user launched the program by double-clicking the .exe file, or ran it from the command-line. That is, until I discovered this:
+
+```csharp
+private static bool started_from_gui = 
+			!Console.IsOutputRedirected
+			&& !Console.IsInputRedirected
+			&& !Console.IsErrorRedirected
+			&& Environment.UserInteractive
+			&& Environment.CurrentDirectory == System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly()?.Location)
+			&& Console.CursorTop == 0 && Console.CursorLeft == 0
+			&& Console.Title == Environment.GetCommandLineArgs()[0]
+			&& Environment.GetCommandLineArgs()[0] == System.Reflection.Assembly.GetEntryAssembly()?.Location;
+```
+
+Thanks to the user <a href="https://stackoverflow.com/a/18307640/11878570" target="_blank">'Fowl' on StackOverflow</a>, this wonderous hunk of code seems to actually pull off the seemingly impossible!
+I have yet to thoroughly go through this code to understand exactly *how* it works, but the answer probably lies in the original question on the StackOverflow post.

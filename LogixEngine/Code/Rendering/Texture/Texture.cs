@@ -6,6 +6,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace LogixEngine.Rendering.Texture
 {
@@ -15,8 +16,11 @@ namespace LogixEngine.Rendering.Texture
      * ---------------------------------------------------------------------------- */
 	public class Texture : UnmanagedResource
 	{
-		public override    identifier Identifier { get; }
-		protected override int        OpenGL_ID  { get; }
+		public sealed override    identifier Identifier { get; }
+		/// <summary>
+		/// The OpenGL texture ID
+		/// </summary>
+		protected sealed override int        ObjectID  { get; }
 		public readonly    int        Width, Height;
 		public readonly    List<byte> RawData;
 		public readonly    bool       HasRawData;
@@ -24,7 +28,7 @@ namespace LogixEngine.Rendering.Texture
 		private Texture(identifier id, int open_gl_id, int width, int height)
 		{
 			Identifier = id;
-			OpenGL_ID  = open_gl_id;
+			ObjectID  = open_gl_id;
 			Width      = width;
 			Height     = height;
 			RawData    = null;
@@ -36,7 +40,7 @@ namespace LogixEngine.Rendering.Texture
 		private Texture(identifier id, int open_gl_id, int width, int height, List<byte> raw_data)
 		{
 			Identifier = id;
-			OpenGL_ID  = open_gl_id;
+			ObjectID  = open_gl_id;
 			Width      = width;
 			Height     = height;
 			RawData    = raw_data;
@@ -45,42 +49,45 @@ namespace LogixEngine.Rendering.Texture
 			Debug.LogDebug($"Created texture '{id}' with a resolution of {width}{SpecialCharacters.Multiply}{Height} px");
 		}
 
-		protected override void Delete()
+		protected sealed override void Delete()
 		{
-			GL.DeleteTexture(OpenGL_ID);
+			GL.DeleteTexture(ObjectID);
 		}
 
 		public static Texture Load(identifier id,                                       string           filename, bool suppress_extension_warning = false, bool store_raw_data = false,
 			TextureWrapMode                   wrap_u     = TextureWrapMode.ClampToEdge, TextureWrapMode  wrap_v     = TextureWrapMode.ClampToEdge,
 			TextureMinFilter                  min_filter = TextureMinFilter.Linear,     TextureMagFilter mag_filter = TextureMagFilter.Linear)
 		{
-			FileManager.VerifyExtension(ref filename, suppress_extension_warning, "png", "jpg", "jpeg");
-			Image<Rgba32> image = FileManager.LoadTexture(filename);
-			if (image == null)
-				throw new AssetLoadFailedException(filename);
-
-			Rgba32[]   temp_pixels = image.GetPixelSpan().ToArray();
-			List<byte> pixels      = new List<byte>();
-
-			foreach (Rgba32 pixel in temp_pixels)
+			return Debug.Profile($"Loading texture '{id}'", true, new Task<Texture>(() =>
 			{
-				pixels.Add(pixel.R);
-				pixels.Add(pixel.G);
-				pixels.Add(pixel.B);
-				pixels.Add(pixel.A);
-			}
+				FileManager.VerifyExtension(ref filename, suppress_extension_warning, "png", "jpg", "jpeg");
+				Image<Rgba32> image = FileManager.LoadTexture(filename);
+				if (image == null)
+					throw new AssetLoadFailedException(filename);
 
-			int texture_id = GL.GenTexture();
-			GL.BindTexture(TextureTarget.Texture2D, texture_id);
-			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS,     (int) wrap_u);
-			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT,     (int) wrap_v);
-			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) min_filter);
-			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) mag_filter);
-			GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, image.Width, image.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, pixels.ToArray());
+				Rgba32[]   temp_pixels = image.GetPixelSpan().ToArray();
+				List<byte> pixels      = new List<byte>();
 
-			return store_raw_data
-				       ? new Texture(id, texture_id, image.Width, image.Height, pixels)
-				       : new Texture(id, texture_id, image.Width, image.Height);
+				foreach (Rgba32 pixel in temp_pixels)
+				{
+					pixels.Add(pixel.R);
+					pixels.Add(pixel.G);
+					pixels.Add(pixel.B);
+					pixels.Add(pixel.A);
+				}
+
+				int texture_id = GL.GenTexture();
+				GL.BindTexture(TextureTarget.Texture2D, texture_id);
+				GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS,     (int) wrap_u);
+				GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT,     (int) wrap_v);
+				GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) min_filter);
+				GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) mag_filter);
+				GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, image.Width, image.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, pixels.ToArray());
+
+				return store_raw_data
+					       ? new Texture(id, texture_id, image.Width, image.Height, pixels)
+					       : new Texture(id, texture_id, image.Width, image.Height);
+			})) as Texture;
 		}
 	}
 }
